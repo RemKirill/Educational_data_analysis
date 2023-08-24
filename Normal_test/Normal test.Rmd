@@ -1,0 +1,462 @@
+---
+title: "Normal test"
+author: "Redkokosh Kirilll"
+date: "12/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(dplyr)
+library(lattice)
+library(tidyr)
+library(GGally)
+library(ggpubr)
+```
+
+```{r}
+df <- read.csv("wqe.csv", header = TRUE, as.is = FALSE, sep = ';')
+head(df)
+```
+
+```{r}
+`%!in%` <- Negate(`%in%`)
+df$ИТ_max <- (10/3)*df$ИТ_max
+df <- df %>% mutate(group = ifelse( (б.с.м %in% "б"), ifelse( (курс %!in% 4) , "1", "2"), "2"))
+df$group <- as.factor(df$group)
+```
+
+```{r}
+group1 <- subset(df, group == 1)
+group2 <- subset(df, group == 2)
+```
+
+Количество людей в каждой группе, если больше 30 человек в группе, то можно говорить об асимптотической сходимости методов:
+
+```{r}
+nrow(group1)
+nrow(group2)
+```
+
+Среднее по группам:
+
+```{r}
+mean(group1$ТЦК_балл)
+mean(group2$ТЦК_балл)
+median(group1$ТЦК_балл)
+median(group2$ТЦК_балл)
+```
+
+```{r}
+ggplot(data = group1, aes(x = ТЦК_балл)) +
+  geom_histogram(binwidth = 5)
+ggplot(data = group2, aes(x = ТЦК_балл)) +
+  geom_histogram(binwidth = 5)
+```
+
+```{r}
+boxplot(group1$ТЦК_балл, horizontal = TRUE, axes = FALSE,
+        lwd = 2, col = rgb(0, 0, 0, alpha = 0.2))
+boxplot(group2$ТЦК_балл, horizontal = TRUE, axes = FALSE,
+        lwd = 2, col = rgb(0, 0, 0, alpha = 0.2))
+```
+
+Стандартные отклонения (а соответсвенно и дисперсии) визуально совсем разные.
+
+```{r}
+ggqqplot(group1$ТЦК_балл, ylab = "Группа 1")
+ggqqplot(group2$ТЦК_балл, ylab = "Группа 2")
+
+shapiro.test(group1$ТЦК_балл)
+shapiro.test(group2$ТЦК_балл)
+```
+
+Присутствуют единичные outliers (важно- с одной стороны), а также выборки не из нормального распределения (но присутствует асимптотическая сходимость), так что лучше использовать критерий Манна-Уитни (wilcox.test). Вообще говоря в этом случае эти два теста проверяют разные гипотезы.
+
+```{r}
+wilcox.test(group1$ТЦК_балл, group2$ТЦК_балл)
+#t.test(group1$ТЦК_балл, group2$ТЦК_балл)$p.value
+```
+
+p-value > 0.05 значит мы не отвергаем гипотезу о равенстве медиан.
+
+```{r}
+sd(group1$ТЦК_балл)
+sd(group2$ТЦК_балл)
+```
+
+Какие-то огромные выборочные стандартные отклонения, но самое главное, что они очень отличаются.
+
+```{r}
+bartlett.test(ТЦК_балл ~ group, df)
+var.test(ТЦК_балл ~ group, df)
+```
+
+Оба теста говорят, что дисперсии не равны.
+
+```{r}
+group1 <- group1 %>% mutate(group11 = ifelse( (ТЦК_балл > 60), ifelse( (ТЦК_балл > 74) , "3", "2"), "1"))
+group1$group11 <- as.factor(group1$group11)
+group2 <- group2 %>% mutate(group21 = ifelse( (ТЦК_балл > 60), ifelse( (ТЦК_балл > 74) , "3", "2"), "1"))
+group2$group21 <- as.factor(group2$group21)
+mice <- matrix(c(nrow(filter(group1, group11 == '1')), nrow(filter(group1, group11 == '2')), nrow(filter(group1, group11 == '3')), nrow(filter(group2, group21 == '1')), nrow(filter(group2, group21 == '2')), nrow(filter(group2, group21 == '3'))), nrow = 2, byrow = TRUE)
+mice
+chisq.test(mice)
+```
+
+Согласно критерию хи-квадрат мы не отвергаем гипотезу о равенстве распределений.
+
+Дальше про итоговый тест:
+
+```{r}
+group1$ИТ_max <- as.double(group1$ИТ_max)
+group2$ИТ_max <- as.double(group2$ИТ_max)
+```
+
+Среднее по группам:
+
+```{r}
+mean(group1$ИТ_max)
+mean(group2$ИТ_max)
+median(group1$ИТ_max)
+median(group2$ИТ_max)
+```
+
+```{r}
+ggplot(data = group1, aes(x = ИТ_max)) +
+  geom_histogram(binwidth = 5)
+ggplot(data = group2, aes(x = ИТ_max)) +
+  geom_histogram(binwidth = 5)
+```
+
+```{r}
+boxplot(group1$ИТ_max, horizontal = TRUE, axes = FALSE,
+        lwd = 2, col = rgb(0, 0, 0, alpha = 0.2))
+boxplot(group2$ИТ_max, horizontal = TRUE, axes = FALSE,
+        lwd = 2, col = rgb(0, 0, 0, alpha = 0.2))
+```
+
+Стандартные отклонения (а соответсвенно и дисперсии) визуально похожи.
+
+```{r}
+ggqqplot(group1$ИТ_max, ylab = "Группа 1")
+ggqqplot(group2$ИТ_max, ylab = "Группа 2")
+
+shapiro.test(group1$ИТ_max)
+shapiro.test(group2$ИТ_max)
+```
+
+Выборки не из нормального распределения (но присутствует асимптотическая сходимость), но хотя бы выбросов нет, уже использовали критерий Манна-Уитни (wilcox.test), но тут можно было бы и t-test.
+
+```{r}
+wilcox.test(group1$ИТ_max, group2$ИТ_max)
+t.test(group1$ИТ_max, group2$ИТ_max)$p.value
+```
+
+p-value > 0.05 значит мы не отвергаем гипотезу о равенстве медиан (распредления достаточно симметричны, так что медиана ≈ среднему).
+
+```{r}
+sd(group1$ИТ_max)
+sd(group2$ИТ_max)
+```
+
+Тут и отличия не такие сильные.
+
+```{r}
+bartlett.test(ИТ_max ~ group, df)
+var.test(ИТ_max ~ group, df)
+```
+
+Оба теста говорят, что мы не отвергаем гипотезу о равентсве дисперсий.
+
+```{r}
+group1 <- group1 %>% mutate(group11 = ifelse( (ИТ_max > 60), ifelse( (ИТ_max > 74) , "3", "2"), "1"))
+group1
+group1$group11 <- as.factor(group1$group11)
+group2 <- group2 %>% mutate(group21 = ifelse( (ИТ_max > 60), ifelse( (ИТ_max > 74) , "3", "2"), "1"))
+group2$group21 <- as.factor(group2$group21)
+mice <- matrix(c(nrow(filter(group1, group11 == '1')), nrow(filter(group1, group11 == '2')), nrow(filter(group1, group11 == '3')), nrow(filter(group2, group21 == '1')), nrow(filter(group2, group21 == '2')), nrow(filter(group2, group21 == '3'))), nrow = 2, byrow = TRUE)
+mice
+chisq.test(mice)
+m <- median(group1$ТЦК_балл1)
+mad(group1$ТЦК_балл1, m, constant = 1)
+m <- median(group1$ИТ_max1)
+mad(group1$ИТ_max1, m, constant = 1)
+m <- median(group2$ТЦК_балл1)
+mad(group2$ТЦК_балл1, m, constant = 1)
+m <- median(group2$ИТ_max1)
+mad(group2$ИТ_max1, m, constant = 1)
+```
+
+Согласно критерию хи-квадрат мы не отвергаем гипотезу о равенстве распределений.
+
+И для ТЦК и для итоговых оценок мы не отвергаем гипотезу о равенстве распределений, поэтому можно назвать выборки однородными.
+
+```{r}
+wilcox.test(df$ТЦК_балл, df$ИТ_max)
+wilcox.test(na.omit(df$СЦК_старт), na.omit(df$СЦК_финал))
+wilcox.test(na.omit(df$СЦК_старт), na.omit(df$ТЦК_балл))
+wilcox.test(na.omit(df$СЦК_финал), na.omit(df$ИТ_max))
+```
+
+```{r}
+df <- read.csv("wqe.csv", header = TRUE, as.is = FALSE, sep = ';')[1:177, ]
+head(df)
+```
+
+```{r}
+length(df$ИТ_max1)
+plot(na.omit(df$СЦК_старт1))
+plot(na.omit(df$ТЦК_балл1))
+wilcox.test(df$ТЦК_балл1, df$ИТ_max1)
+wilcox.test(na.omit(df$СЦК_старт1), na.omit(df$СЦК_финал1))
+wilcox.test(na.omit(df$СЦК_старт1), na.omit(df$ТЦК_балл1))
+wilcox.test(na.omit(df$СЦК_финал1), na.omit(df$ИТ_max1))
+#mad(df$ТЦК_балл1, median(df$ТЦК_балл1), constant = 1)
+#mad(df$ИТ_max1, median(df$ИТ_max1), constant = 1)
+#mad(na.omit(df$СЦК_старт1), median(na.omit(df$СЦК_старт1)), constant = 1)
+#mad(na.omit(df$СЦК_финал1), median(na.omit(df$СЦК_финал1)), constant = 1)
+```
+
+Значимые различия наблюдаются между вводной самоценкой и итоговой самоценкой (p-value = 3.711423e-14), при этом медиана сильно возросла с 52.06 до 68.75, а также значимы различия между вводной самоценкой и вводной формальной оценкой (p-value = 6.338771e-15), однако не удалось обнаружить различия в среднем между вводной и итоговой формальными оценками (p-value = 0.06156721) и между итоговой самоценкой и итоговой формальной оценкой (p-value = 0.8679022).
+
+```{r}
+wilcox.test(filter(df, ТЦК_старт_уровень == 'начальный')$ТЦК_балл1, filter(df, ИТ_уровень == 'начальный')$ИТ_max1)
+wilcox.test(filter(df, ТЦК_старт_уровень == 'базовый')$ТЦК_балл1, filter(df, ИТ_уровень == 'базовый')$ИТ_max1)
+wilcox.test(filter(df, ТЦК_старт_уровень == 'продвинутый')$ТЦК_балл1, filter(df, ИТ_уровень == 'продвинутый')$ИТ_max1)
+wilcox.test(filter(df, ТЦК_старт_уровень == 'высокий')$ТЦК_балл1, filter(df, ИТ_уровень == 'высокий')$ИТ_max1)
+```
+
+```{r}
+median(filter(df, ТЦК_старт_уровень == 'начальный')$ТЦК_балл1)
+median(filter(df, ТЦК_старт_уровень == 'базовый')$ТЦК_балл1)
+median(filter(df, ТЦК_старт_уровень == 'продвинутый')$ТЦК_балл1)
+median(filter(df, ТЦК_старт_уровень == 'высокий')$ТЦК_балл1)
+median(filter(df, ИТ_уровень == 'начальный')$ИТ_max1)
+median(filter(df, ИТ_уровень == 'базовый')$ИТ_max1)
+median(filter(df, ИТ_уровень == 'продвинутый')$ИТ_max1)
+median(filter(df, ИТ_уровень == 'высокий')$ИТ_max1)
+```
+
+Внутри подгрупп вводной и итоговой формальной оценок по уровню сформированности компетенцией различия в среднем значимы лишь для продвинутого уровня (p-value = 1.065658e-05), при этом значение медианы очень увеличилось с 79 до 83.33.
+
+```{r}
+plot(filter(df, СЦК_Уровень == 'продвинутый')$СЦК_старт1)
+plot(filter(df, ТЦК_старт_уровень == 'начальный')$ТЦК_балл1)
+```
+
+```{r}
+wilcox.test(filter(df, СЦК_Уровень == 'начальный')$СЦК_старт1, filter(df, ТЦК_старт_уровень == 'начальный')$ТЦК_балл1)dff
+wilcox.test(filter(df, СЦК_Уровень == 'базовый')$СЦК_старт1, filter(df, ТЦК_старт_уровень == 'базовый')$ТЦК_балл1)
+wilcox.test(filter(df, СЦК_Уровень == 'продвинутый')$СЦК_старт1, filter(df, ТЦК_старт_уровень == 'продвинутый')$ТЦК_балл1)
+wilcox.test(filter(df, СЦК_Уровень == 'высокий')$СЦК_старт1, filter(df, ТЦК_старт_уровень == 'высокий')$ТЦК_балл1)
+```
+
+```{r}
+median(filter(df, СЦК_Уровень == 'начальный')$СЦК_старт1)
+median(filter(df, СЦК_Уровень == 'базовый')$СЦК_старт1)
+median(filter(df, СЦК_Уровень == 'продвинутый')$СЦК_старт1)
+median(filter(df, СЦК_Уровень == 'высокий')$СЦК_старт1)
+median(filter(df, ТЦК_старт_уровень == 'начальный')$ТЦК_балл1)
+median(filter(df, ТЦК_старт_уровень == 'базовый')$ТЦК_балл1)
+median(filter(df, ТЦК_старт_уровень == 'продвинутый')$ТЦК_балл1)
+median(filter(df, ТЦК_старт_уровень == 'высокий')$ТЦК_балл1)
+```
+
+Внутри подгрупп вводной и итоговой самооценок по уровню сформированности компетенцией различия в среднем значимы лишь для начального уровня (p-value = 0.02), при этом значение медианы очень сильно уменьшилось с 29.19 до 5.22. (Однако при итоговой самооценке начальный уровень получили лишь 2 человека- можно связать с нежеланием серьезно проходить тест)
+
+```{r}
+wilcox.test(filter(df, СЦК_Уровень == 'начальный')$СЦК_старт1, filter(df, СЦК_финал_уровень == 'начальный')$СЦК_финал1)
+wilcox.test(filter(df, СЦК_Уровень == 'базовый')$СЦК_старт1, filter(df, СЦК_финал_уровень == 'базовый')$СЦК_финал1)
+wilcox.test(filter(df, СЦК_Уровень == 'продвинутый')$СЦК_старт1, filter(df, СЦК_финал_уровень == 'продвинутый')$СЦК_финал1)
+wilcox.test(filter(df, СЦК_Уровень == 'высокий')$СЦК_старт1, filter(df, СЦК_финал_уровень == 'высокий')$СЦК_финал1)
+```
+
+```{r}
+m <- median(filter(df, СЦК_Уровень == 'начальный')$СЦК_старт1)
+mad(filter(df, СЦК_Уровень == 'начальный')$СЦК_старт1, m, constant = 1)
+m <- median(filter(df, СЦК_Уровень == 'базовый')$СЦК_старт1)
+mad(filter(df, СЦК_Уровень == 'базовый')$СЦК_старт1, m, constant = 1)
+m <- median(filter(df, СЦК_Уровень == 'продвинутый')$СЦК_старт1)
+mad(filter(df, СЦК_Уровень == 'продвинутый')$СЦК_старт1, m, constant = 1)
+m <- median(filter(df, СЦК_Уровень == 'высокий')$СЦК_старт1)
+mad(filter(df, СЦК_Уровень == 'высокий')$СЦК_старт1, m, constant = 1)
+m <- median(filter(df, СЦК_финал_уровень == 'начальный')$СЦК_финал1)
+mad(filter(df, СЦК_финал_уровень == 'начальный')$СЦК_финал1, m, constant = 1)
+m <- median(filter(df, СЦК_финал_уровень == 'базовый')$СЦК_финал1)
+mad(filter(df, СЦК_финал_уровень == 'базовый')$СЦК_финал1, m, constant = 1)
+m <- median(filter(df, СЦК_финал_уровень == 'продвинутый')$СЦК_финал1)
+mad(filter(df, СЦК_финал_уровень == 'продвинутый')$СЦК_финал1, m, constant = 1)
+m <- median(filter(df, СЦК_финал_уровень == 'высокий')$СЦК_финал1)
+mad(filter(df, СЦК_финал_уровень == 'высокий')$СЦК_финал1, m, constant = 1)
+```
+
+```{r}
+wilcox.test(filter(df, ИТ_уровень == 'начальный')$ИТ_max1, filter(df, СЦК_финал_уровень == 'начальный')$СЦК_финал1)
+wilcox.test(filter(df, ИТ_уровень == 'базовый')$ИТ_max1, filter(df, СЦК_финал_уровень == 'базовый')$СЦК_финал1)
+wilcox.test(filter(df, ИТ_уровень == 'продвинутый')$ИТ_max1, filter(df, СЦК_финал_уровень == 'продвинутый')$СЦК_финал1)
+wilcox.test(filter(df, ИТ_уровень == 'высокий')$ИТ_max1, filter(df, СЦК_финал_уровень == 'высокий')$СЦК_финал1)
+```
+
+```{r}
+median(filter(df, ИТ_уровень == 'начальный')$ИТ_max1)
+median(filter(df, ИТ_уровень == 'базовый')$ИТ_max1)
+median(filter(df, ИТ_уровень == 'продвинутый')$ИТ_max1)
+median(filter(df, ИТ_уровень == 'высокий')$ИТ_max1)
+median(filter(df, СЦК_финал_уровень == 'начальный')$СЦК_финал1)
+median(filter(df, СЦК_финал_уровень == 'базовый')$СЦК_финал1)
+median(filter(df, СЦК_финал_уровень == 'продвинутый')$СЦК_финал1)
+median(filter(df, СЦК_финал_уровень == 'высокий')$СЦК_финал1)
+m <- median(filter(df, ИТ_уровень == 'начальный')$ИТ_max1)
+mad(filter(df, ИТ_уровень == 'начальный')$ИТ_max1, m, constant = 1)
+m <- median(filter(df, ИТ_уровень == 'базовый')$ИТ_max1)
+mad(filter(df, ИТ_уровень == 'базовый')$ИТ_max1, m, constant = 1)
+m <- median(filter(df, ИТ_уровень == 'продвинутый')$ИТ_max1)
+mad(filter(df, ИТ_уровень == 'продвинутый')$ИТ_max1, m, constant = 1)
+m <- median(filter(df, ИТ_уровень == 'высокий')$ИТ_max1)
+mad(filter(df, ИТ_уровень == 'высокий')$ИТ_max1, m, constant = 1)
+m <- median(filter(df, ТЦК_старт_уровень == 'начальный')$ТЦК_балл1)
+mad(filter(df, ТЦК_старт_уровень == 'начальный')$ТЦК_балл1, m, constant = 1)
+m <- median(filter(df, ТЦК_старт_уровень == 'базовый')$ТЦК_балл1)
+mad(filter(df, ТЦК_старт_уровень == 'базовый')$ТЦК_балл1, m, constant = 1)
+m <- median(filter(df, ТЦК_старт_уровень == 'продвинутый')$ТЦК_балл1)
+mad(filter(df, ТЦК_старт_уровень == 'продвинутый')$ТЦК_балл1, m, constant = 1)
+m <- median(filter(df, ТЦК_старт_уровень == 'высокий')$ТЦК_балл1)
+mad(filter(df, ТЦК_старт_уровень == 'высокий')$ТЦК_балл1, m, constant = 1)
+```
+
+```{r}
+rav <- runif(10000)
+c <- 3/10
+exp_my <- ifelse(rav < 3/10, 2/3*(5*rav-3), ifelse(rav < 5/10, -(5/2)^(2/3)*(-(-4*rav^2+4*rav-1))^(1/3), ifelse(rav < 7/10, (5/2)^(2/3)*(2*rav-1)^(2/3), 2/3*(5*rav-2))))
+hist(exp_my, xlim=c(-5,5), breaks = 120, probability = TRUE)
+dat = data.frame(x=c(-3000:3000)/1000)
+dat <- dat %>% 
+  mutate(y = case_when((x >= -2 & x <= -1) ~ c,
+                       (x > -1 & x <= 0) ~ c*(-x)^(1/2),
+                       (x > 0 & x <= 1) ~ c*x^(1/2),
+                       (x > 1 & x <= 2) ~ c,
+                       TRUE ~  0))
+lines(dat$x, dat$y, lwd = 2)
+```
+
+```{r}
+rav <- runif(10000)
+rav2 <- runif(10000)
+exp_my <- ifelse(rav < 3/10, rav2-2, ifelse(rav < 5/10, -(-(-225*rav2^2+30*rav2-1))^(1/3), ifelse(rav < 7/10, 3*3^(1/3)/(2^(2/3))*rav2^(2/3), rav2+1)))
+hist(exp_my, xlim=c(-3,3), breaks = 100, probability = TRUE)
+dat = data.frame(x=c(-3000:3000)/1000)
+dat <- dat %>% 
+  mutate(y = case_when((x >= -2 & x <= -1) ~ c,
+                       (x > -1 & x <= 0) ~ c*(-x)^(1/2),
+                       (x > 0 & x <= 1) ~ c*x^(1/2),
+                       (x > 1 & x <= 2) ~ c,
+                       TRUE ~  0))
+lines(dat$x, dat$y, lwd = 2)
+```
+
+```{r}
+rav <- runif(10000)
+rav2 <- runif(10000)
+c <- 2*exp(4)/(1+2*exp(3))
+exp_my <- ifelse(exp(1)*rav < c, log(rav2)-1, sqrt(4-log(1-rav2)))
+hist(exp_my, xlim=c(-5,5), breaks = 500, freq = TRUE)
+```
+
+```{r}
+rav <- runif(10000)
+rav2 <- runif(10000)
+exp_my <- ifelse(rav < 3/7, rav2-1, ifelse(rav < 4/7, rav2^(1/3), 1/(1-rav2)))
+hist(exp_my, xlim=c(-2,10), breaks = 50000, freq = TRUE)
+```
+
+```{r}
+rav <- runif(10000)
+rav2 <- runif(10000)
+c <- ((1+exp(2))^2/exp(4))^-1
+exp_my <- (-log(1/rav-1))[!((rav < 1/(1+exp(1)) & rav2 > c*(1/rav-1)^-2*1/(rav^2)) | (rav > 1/(1+exp(2)) & rav2 > c*(1/rav-1)^-1*1/(rav^2)*exp(-log(1/rav-1)-(log(1/rav-1))^2)))]
+hist(exp_my, xlim=c(-5,5), breaks = 50, freq = TRUE)
+```
+
+```{r}
+rav <- runif(10000)
+rav2 <- runif(10000)
+eta <- (1-2*rav)/(rav-1)
+exp_my <- eta[!((eta > -1 & eta < 0 & (eta+2)^2<9*rav2) | (eta > 0 & eta < 1 & eta^2*(eta+2)^2 < 9*rav2) | (eta > 1 & (eta+2)^2*eta^(-2) < 9*rav2))]
+hist(exp_my, xlim=c(-5,5), breaks = 20000, freq = TRUE)
+```
+
+```{r}
+rav <- runif(10000)
+rav2 <- runif(10000)
+eta <- -log(1/rav-1)
+c <- (1+exp(2))^2/exp(4)
+exp_my <- eta[!((eta < -1 & exp(2*eta)*(1+exp(-eta))^2 < c*rav2) | (eta*exp(eta-eta^2)*(1+exp(-eta))^2 < c*rav2))]
+hist(exp_my, xlim=c(-5,5), breaks = 20, freq = TRUE)
+```
+
+```{r}
+rav <- runif(10000)
+rav2 <- runif(10000)
+eta <- (1-2*rav)/(rav-1)
+exp_my <- eta[!((rav >= 0 & rav <= 1/2 & rav2 > 1/(9*(rav-1)^2)) | (rav > 1/2 & rav <= 2/3 & rav2 > ((2*rav-1)^2)/(9*(rav-1)^4)) | (rav > 2/3 & rav < 1 & rav2 > 1/(9*(1-2*rav)^2)))]
+hist(exp_my, xlim=c(-3,6), breaks = 20000, probability = TRUE)
+dat <- data.frame(x=c(-2000:10000)/1000)
+dat <- dat %>% 
+  mutate(y = case_when((x >= -1 & x <= 0) ~ 3/7,
+                       (x > 0 & x <= 1) ~ 3/7*x^2,
+                       x > 1 ~ 3/7*x^-2,
+                       TRUE ~  0))
+lines(dat$x, dat$y, lwd = 2)
+```
+
+```{r}
+rav <- runif(10000)
+rav2 <- runif(10000)
+c <- 2*exp(4)/(1+2*exp(3))
+eta <- -log(1-rav[1:5000])
+eta <- append(eta, log(1-rav[5001:10000]))
+exp_my <- eta[!((eta < -1 & c/2 < 1/2*rav2) | (eta > 2 & c/2*eta*exp(eta-eta^2) < 1/2*rav2))]
+hist(exp_my, xlim=c(-3,6), breaks = 200, probability = TRUE)
+dat = data.frame(x=c(-2000:10000)/1000)
+dat <- dat %>% 
+  mutate(y = case_when((x < -1) ~ c*exp(x),
+                       (x > 2) ~ c*x*exp(-x^2),
+                       TRUE ~  0))
+lines(dat$x, dat$y, lwd = 2)
+```
+
+```{r}
+rav <- runif(10000)
+rav2 <- runif(10000)
+eta <- 8*rav^2
+exp_my <- eta[!((eta > 1 & eta < 2 & eta^(1/2) < 8*rav2) | (eta > 0 & eta < 1 & eta < 8*rav2))]
+hist(exp_my, xlim=c(-3,6), breaks = 20, probability = TRUE)
+dat = data.frame(x=c(-3000:3000)/1000)
+dat <- dat %>% 
+  mutate(y = case_when((x >= -2 & x <= -1) ~ c,
+                       (x > -1 & x <= 0) ~ c*(-x)^(1/2),
+                       (x > 0 & x <= 1) ~ c*x^(1/2),
+                       (x > 1 & x <= 2) ~ c,
+                       TRUE ~  0))
+lines(dat$x, dat$y, lwd = 2)
+```
+
+Декомпозиция
+
+```{r}
+rav <- runif(10000)
+rav2 <- runif(10000)
+c <- 1/(2*exp(1)-1)
+exp_my <- ifelse(rav < 1-c, log((1-c)*((2*c)/(1-c)+rav2)/(2*c)), 1/sqrt(rav2))
+hist(exp_my, xlim=c(-1,5), breaks = 1000, probability = TRUE)
+dat = data.frame(x=c(-1000:5000)/1000)
+dat <- dat %>% 
+  mutate(y = case_when((x >= 0 & x <= 1) ~ 2*c*exp(x),
+                       (x > 1) ~ c*x^(-2),
+                       TRUE ~  0))
+lines(dat$x, dat$y, lwd = 2)
+```

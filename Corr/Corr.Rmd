@@ -1,0 +1,181 @@
+---
+title: "Normal test"
+author: "Redkokosh Kirilll"
+date: "12/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(dplyr)
+library(lattice)
+library(tidyr)
+library(GGally)
+library(ggpubr)
+library(lm.beta)
+library(MASS)
+library(rstatix)
+library(REdaS)
+library(psych)
+```
+
+```{r}
+df <- read.csv("wqe.csv", header = TRUE, as.is = FALSE, sep = ';')
+head(df)
+#lm.df.oecd <- lm.beta(lm(data = df, ИТ_max1 ~ Т1 + Т2 + Т3 + Т4 + Т5 + Т6 + Т7 + Т8 + Т9 + Т10 + Т11 + П2 + П4 + П5 + П6 + П8 + П9))
+#summary(lm.df.oecd)
+#stepAIC(lm.df.oecd, direction = "backward")
+```
+
+```{r}
+df <- df %>% mutate(T_sum = (Т1. + Т2. + Т3. + Т4. + Т5. + Т6. + Т7. + Т8. + Т9. + Т10. + Т11.)/11)
+df <- df %>% mutate(П_sum = (П2. + П4. + П5. + П6. + П8. + П9.)/6)
+max(na.omit(df$П_sum))
+ggpairs(df, columns = c('T_sum', 'ИТ_max1'), diag = list(continuous = "barDiag"))
+ggpairs(df, columns = c('П_sum', 'ИТ_max1'), diag = list(continuous = "barDiag"))
+```
+
+1. Корреляция суммы оценок за тесты и оценки за итоговый тест = 0.5288 (значима = 2.029e-13 при стандартных уровнях значимости) (индивидов- 166).
+
+2. Корреляция суммы оценок за практикумы и оценки за итоговый тест = 0.3582 (значима = 0.0078 при стандартных уровнях значимости) (индивидов- 53).
+
+У оценок за тесты очень интересное распределение, корреляция тут вроде большая и даже значимая, но распределение немного вводит в ступор...
+
+```{r}
+ggpairs(df, columns = c('T_sum', 'СЦК_финал1'), diag = list(continuous = "barDiag"))
+ggpairs(df, columns = c('П_sum', 'СЦК_финал1'), diag = list(continuous = "barDiag"))
+```
+
+1. Корреляция суммы оценок за тесты и финальной СЦК = 0.3155 (значима = 0.0003 при стандартных уровнях значимости) (индивидов- 126).
+
+2. Корреляция суммы оценок за практикумы и финальной СЦК = 0.5433 (значима = 3.782e-05 при стандартных уровнях значимости) (индивидов- 50).
+
+Похоже, что есть хоть какая-то связь только во втором случае.
+
+```{r}
+`%!in%` <- Negate(`%in%`)
+ggpairs(df, columns = c('СЦК_финал1', 'ИТ_max1'), diag = list(continuous = "barDiag"))
+mean(na.omit(df$T_sum))
+mean(na.omit(df$П_sum))
+sd(na.omit(df$T_sum))
+sd(na.omit(df$П_sum))
+df <- df %>% mutate(П11_sum = (П1 + П3 + П7))
+wilcox.test(filter(df, П11_sum %in% NA)$ИТ_max1, filter(df, ИТ_уровень %!in% NA)$ИТ_max1)$p.value
+median(filter(df, П11_sum %in% NA)$ИТ_max1)
+median(filter(df, П11_sum %!in% NA)$ИТ_max1)
+mad(filter(df, П11_sum %in% NA)$ИТ_max1)
+mad(filter(df, П11_sum %!in% NA)$ИТ_max1)
+```
+
+Между итоговой оценкой и финальной самооценкой присутствует значимая, положительная корреляция 0.29. На графике (левый верхний) видно, что люди часто оценивают себя выше среднего. А реальной зависимости (левый нижний)-- нет, это равномерное распределение с парой выбросов.
+
+```{r}
+df <- df %>% mutate(group = ifelse(df$Вид.записи == 'пз', 1, 2))
+df$group <- as.factor(df$group)
+group1 <- subset(df, group == 1)
+group2 <- subset(df, group == 2)
+```
+
+```{r}
+group1 <- group1 %>% mutate(group11 = ifelse( (ИТ_max1 > 60), ifelse( (ИТ_max1 > 74) , "3", "2"), "1"))
+group1$group11 <- as.factor(group1$group11)
+group2 <- group2 %>% mutate(group21 = ifelse( (ИТ_max1 > 60), ifelse( (ИТ_max1 > 74) , "3", "2"), "1"))
+group2$group21 <- as.factor(group2$group21)
+mice <- matrix(c(nrow(filter(group1, group11 == '1')), nrow(filter(group1, group11 == '2')), nrow(filter(group1, group11 == '3')), nrow(filter(group2, group21 == '1')), nrow(filter(group2, group21 == '2')), nrow(filter(group2, group21 == '3'))), nrow = 2, byrow = TRUE)
+mice
+chisq.test(mice)
+```
+
+Распределения итоговой оценки при группировке ± равны, значит вряд ли есть "корреляция".
+
+```{r}
+df1 <- na.omit(dplyr::select(df, курс, ТЦК_балл1, СЦК_старт1, Т1, Т2, Т3, Т4, Т5, Т6, Т7, Т8, Т9, Т10, Т11, СЦК_финал1, ИТ_max1))
+KMOS(df1, use = "pairwise.complete.obs")
+cortest.bartlett(cor(df1))
+factanal(df1, 4)
+```
+
+Факторный анализ с такими аргументами (без пратикумов) объясняет 55.6% разброса данных, при этом первый фактор объясняет 31.2%. p-value = 0.00222, значит "выбранного числа факторов достаточно для описания данных". 
+
+Интерпретация: 
+
+Фактор 1 объединяет почти все тесты (кроме 3 и 11 (хотя там тоже неплохие корреляции)), то есть можно сказать, что наиболее влияющим фактором является прохождение тестов.
+
+Фактор 2 объединяет ТЦК, СЦК_старт1, СЦК_финал1 и ИТ_max1.
+
+Дальше в факторах уже что-то неинтресное происходит. Но факторный анализ разделил оценки за тесты и оценки ТЦК, СЦК_старт1, СЦК_финал1 и ИТ_max1, то есть это как бы различные оценки, а также самый влияющий фактор-- прохождение тестов.
+
+```{r}
+df1 <- rbind(dplyr::select(group1, ИТ_max1, group), dplyr::select(group2, ИТ_max1, group))
+res.aov <- df1 %>% anova_test(ИТ_max1 ~ group)
+res.aov
+df1 <- rbind(dplyr::select(group1, ИТ_max1, T_sum), dplyr::select(group2, ИТ_max1, T_sum))
+res.aov <- df1 %>% anova_test(ИТ_max1 ~ T_sum)
+res.aov
+df1 <- rbind(dplyr::select(group1, ИТ_max1, П_sum), dplyr::select(group2, ИТ_max1, П_sum))
+res.aov <- df1 %>% anova_test(ИТ_max1 ~ П_sum)
+res.aov
+df <- df %>% mutate(group = ifelse(df$Есть.педагогика.в.УП. == 'есть', 1, 2))
+df$group <- as.factor(df$group)
+length(df1$group)
+group1 <- subset(df, group == 1)
+group2 <- subset(df, group == 2)
+df1 <- rbind(dplyr::select(group1, ИТ_max1, group), dplyr::select(group2, ИТ_max1, group))
+res.aov <- df1 %>% anova_test(ИТ_max1 ~ group)
+res.aov
+```
+
+Итоговая оценка и сумма оценок за тесты, ges = 0.28, p-value = 2.03e-13.
+
+Итоговая оценка и сумма оценок за практикумы, ges = 0.128, p-value = 0.008. 
+
+Итоговая оценка и вид записи, ges = 0.006, p-value = 0.287. 
+
+Итоговая оценка и наличие пед. дисциплин, ges = 0.006, p-value = 0.302. 
+
+Значимыми являются первые два результата, при этом сумма оценок за тесты объясняет около 28% итоговой оценки, а сумма оценок за практикумы 13%, то есть тесты больше влияют на оценку за итоговый тест.
+
+```{r}
+df1 <- rbind(dplyr::select(group1, СЦК_финал1, group), dplyr::select(group2, СЦК_финал1, group))
+res.aov <- df1 %>% anova_test(СЦК_финал1 ~ group)
+summary(res.aov)
+tukey.test()
+df1 <- rbind(dplyr::select(group1, СЦК_финал1, T_sum), dplyr::select(group2, СЦК_финал1, T_sum))
+res.aov <- df1 %>% anova_test(СЦК_финал1 ~ T_sum)
+res.aov
+df1 <- rbind(dplyr::select(group1, СЦК_финал1, П_sum), dplyr::select(group2, СЦК_финал1, П_sum))
+res.aov <- df1 %>% anova_test(СЦК_финал1 ~ П_sum)
+res.aov
+df <- df %>% mutate(group = ifelse(df$Вид.записи == 'пз', 1, 2))
+df$group <- as.factor(df$group)
+group1 <- subset(df, group == 1)
+group2 <- subset(df, group == 2)
+df1 <- rbind(dplyr::select(group1, СЦК_финал1, group), dplyr::select(group2, СЦК_финал1, group))
+res.aov <- df1 %>% anova_test(СЦК_финал1 ~ group)
+res.aov
+```
+
+```{r}
+df1 <- rbind(dplyr::select(group1, СЦК_финал1, ИТ_max1), dplyr::select(group2, СЦК_финал1, ИТ_max1))
+res.aov <- df1 %>% anova_test(ИТ_max1 ~ СЦК_финал1)
+res.aov
+```
+
+```{r}
+df1 <- rbind(dplyr::select(group1, СЦК_финал1, СЦК_старт1), dplyr::select(group2, СЦК_финал1, СЦК_старт1))
+res.aov <- df1 %>% anova_test(СЦК_финал1 ~ СЦК_старт1)
+res.aov
+```
+
+СЦК_финал1 и сумма оценок за тесты, ges = 0.1, p-value = 0.000301.
+
+СЦК_финал1 и сумма оценок за практикумы, ges = 0.295, p-value = 3.78e-05. 
+
+СЦК_финал1 и вид записи, ges = 0.017, p-value = 0.141. 
+
+СЦК_финал1 и наличие пед. дисциплин, ges = 0.017, p-value = 0.135. 
+
+Значимыми являются первые два результата, при этом сумма оценок за практикумы объясняет около 30% СЦК_финал1, а сумма оценок за тесты 10%, то есть практикумы больше влияют на итоговую самооценку.
