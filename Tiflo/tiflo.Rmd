@@ -1,0 +1,47 @@
+---
+title: "tiflo"
+author: "Redkokosh Kirill"
+date: '2023-05-12'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data <- read.csv("/Users/bulochka/RProject/Косова/tiflo_data.csv", header = TRUE, as.is = FALSE, sep = ';', na.strings=c("","NA"))
+d1 <- data[c(2,3,6,13,14,26,29,35,38),1]
+d2 <- data[-c(2,3,6,13,14,26,29,35,38),1]
+t.test(x = data$pre_text, y = data$post_text, paired = TRUE)
+t.test(x = data$pre_photo, y = data$post_photo, paired = TRUE)
+t.test(x = data$pre_n, y = data$post_n, paired = TRUE)
+t.test(x = d1, y = d2, paired = FALSE)
+mean(data$pre_photo)
+mean(data$post_photo)
+a1 <- t.test(x = data$pre_text[seq(1, 51, 3)], y = data$post_text[seq(1, 51, 3)], paired = TRUE)
+a2 <- t.test(x = data$pre_text[seq(2, 51, 3)], y = data$post_text[seq(2, 51, 3)], paired = TRUE)
+a3 <- t.test(x = data$pre_text[seq(3, 51, 3)], y = data$post_text[seq(3, 51, 3)], paired = TRUE)
+a4 <- t.test(x = data$pre_photo[seq(1, 51, 3)], y = data$post_photo[seq(1, 51, 3)], paired = TRUE)
+a5 <- t.test(x = data$pre_photo[seq(2, 51, 3)], y = data$post_photo[seq(2, 51, 3)], paired = TRUE)
+a6 <- t.test(x = data$pre_photo[seq(3, 51, 3)], y = data$post_photo[seq(3, 51, 3)], paired = TRUE)
+a7 <- t.test(x = data$pre_n[seq(1, 51, 3)], y = data$post_n[seq(1, 51, 3)], paired = TRUE)
+a8 <- t.test(x = data$pre_n[seq(2, 51, 3)], y = data$post_n[seq(2, 51, 3)], paired = TRUE)
+a9 <- t.test(x = data$pre_n[seq(3, 51, 3)], y = data$post_n[seq(3, 51, 3)], paired = TRUE)
+c('t = ', a1$statistic,' df = ', a1$parameter, ' p-value = ', a1$p.value)
+c('t = ', a2$statistic,' df = ', a2$parameter, ' p-value = ', a2$p.value)
+c('t = ', a3$statistic,' df = ', a3$parameter, ' p-value = ', a3$p.value)
+c('t = ', a4$statistic,' df = ', a4$parameter, ' p-value = ', a4$p.value)
+c('t = ', a5$statistic,' df = ', a5$parameter, ' p-value = ', a5$p.value)
+c('t = ', a6$statistic,' df = ', a6$parameter, ' p-value = ', a6$p.value)
+c('t = ', a7$statistic,' df = ', a7$parameter, ' p-value = ', a7$p.value)
+c('t = ', a8$statistic,' df = ', a8$parameter, ' p-value = ', a8$p.value)
+c('t = ', a9$statistic,' df = ', a9$parameter, ' p-value = ', a9$p.value)
+c(mean(data$pre_photo[seq(1, 51, 3)]), mean(data$post_photo[seq(1, 51, 3)]))
+c(mean(data$pre_photo[seq(3, 51, 3)]), mean(data$post_photo[seq(3, 51, 3)]))
+cor.test(data$pre_n, data$pre_text)
+cor.test(data$pre_n, data$pre_photo)
+cor.test(data$post_n, data$post_text)
+cor.test(data$post_n, data$post_photo)
+summary(lm(post_text ~ pre_text + pre_photo + pre_n + post_n, data = data))
+```
